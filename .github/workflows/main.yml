@@ -33,6 +33,7 @@ jobs:
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          BARK_URLS: ${{ secrets.BARK_URLS }}
           BARK_URL: ${{ secrets.BARK_URL }}
           BARK_GROUP: ${{ secrets.BARK_GROUP }}
           NEW_GAME_WINDOW_HOURS: ${{ github.event_name == 'workflow_dispatch' && inputs.new_game_window_hours || vars.NEW_GAME_WINDOW_HOURS || '28' }}

@@ -2,11 +2,13 @@ import requests
 import os
 from datetime import datetime, timedelta
 import html
+from urllib.parse import urlparse
 
 # 1. 获取 GitHub Secrets
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID = os.environ.get("TG_CHAT_ID")
 BARK_URL = os.environ.get("BARK_URL")
+BARK_URLS = os.environ.get("BARK_URLS")
 BARK_GROUP = os.environ.get("BARK_GROUP", "Epic Free Games")
 NEW_GAME_WINDOW_HOURS = os.environ.get("NEW_GAME_WINDOW_HOURS", "28")
 
@@ -32,6 +34,16 @@ def build_game_link(game):
         or game.get("urlSlug")
     )
     return f"https://store.epicgames.com/p/{slug}" if slug else "https://store.epicgames.com/free-games"
+
+def get_bark_urls():
+    raw_urls = BARK_URLS or BARK_URL or ""
+    urls = raw_urls.replace(";", "\n").replace(",", "\n").splitlines()
+    return [url.strip().rstrip("/") for url in urls if url.strip()]
+
+def mask_url(url):
+    parsed = urlparse(url)
+    tail = url[-6:] if len(url) > 6 else "***"
+    return f"{parsed.scheme}://{parsed.netloc}/***{tail}" if parsed.scheme and parsed.netloc else "***"
 
 def get_epic_free_games():
     url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US"
@@ -137,7 +149,8 @@ def send_telegram_message(message):
         print(f"❌ Telegram 推送错误: {e}")
 
 def send_bark_message(game):
-    if not BARK_URL:
+    bark_urls = get_bark_urls()
+    if not bark_urls:
         print("未配置 Bark，跳过 Bark 推送")
         return
 
@@ -157,12 +170,13 @@ def send_bark_message(game):
     if game.get("image"):
         payload["icon"] = game["image"]
 
-    try:
-        res = requests.post(BARK_URL.rstrip("/"), json=payload, timeout=15)
-        res.raise_for_status()
-        print("✅ Bark 推送成功")
-    except Exception as e:
-        print(f"❌ Bark 推送错误: {e}")
+    for index, bark_url in enumerate(bark_urls, start=1):
+        try:
+            res = requests.post(bark_url, json=payload, timeout=15)
+            res.raise_for_status()
+            print(f"✅ Bark 推送成功 ({index}/{len(bark_urls)})")
+        except Exception as e:
+            print(f"❌ Bark 推送错误 ({index}/{len(bark_urls)}, {mask_url(bark_url)}): {e}")
 
 if __name__ == "__main__":
     print(f"⏳ 开始检查 Epic 免费游戏 (推送窗口: {get_new_game_window_hours()} 小时，0 表示不限制)...")

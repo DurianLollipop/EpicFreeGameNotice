@@ -83,6 +83,7 @@ GitHub Actions 定时触发
 2. 复制 App 首页显示的推送 URL。
 3. URL 通常类似 `https://api.day.app/你的Key/推送内容`。
 4. 把这个完整地址保存为 GitHub Secret：`BARK_URL`。
+5. 如果要推送到多个 Bark 设备，把多个完整地址保存为 `BARK_URLS`，每行一个。
 
 ### 2. Fork 仓库
 
@@ -103,6 +104,7 @@ GitHub Actions 定时触发
 | `TG_BOT_TOKEN` | 你的机器人 Token | Telegram 推送需要，来自 `@BotFather` |
 | `TG_CHAT_ID` | 你的数字 ID | Telegram 推送需要，来自 `@userinfobot` |
 | `BARK_URL` | 完整 Bark 推送地址 | Bark 推送需要，直接复制 Bark App 里的推送地址即可 |
+| `BARK_URLS` | 多个完整 Bark 推送地址 | 可选。多个 Bark 地址每行一个；配置后优先使用它 |
 | `BARK_GROUP` | 推送分组名 | 可选。默认 `Epic Free Games` |
 
 如果你使用 Bark，通常只需要配置一个 Secret：
@@ -110,6 +112,16 @@ GitHub Actions 定时触发
 ```text
 BARK_URL=https://api.day.app/你的Key
 ```
+
+如果你要推送到多个 Bark 设备，配置 `BARK_URLS`：
+
+```text
+https://api.day.app/第一个Key
+https://api.day.app/第二个Key
+https://api.day.app/第三个Key
+```
+
+`BARK_URLS` 也支持用英文逗号或分号分隔，但更推荐每行一个，比较好维护。
 
 自建 Bark 服务也同样只需要填完整地址：
 
@@ -143,7 +155,7 @@ BARK_URL=https://你的Bark服务地址/你的Key
 | Python 版本 | `.github/workflows/main.yml` | `3.9` |
 | 依赖文件 | `requirements.txt` | `requests` |
 | Telegram 配置 | GitHub Secrets | `TG_BOT_TOKEN`、`TG_CHAT_ID` |
-| Bark 配置 | GitHub Secrets | `BARK_URL` |
+| Bark 配置 | GitHub Secrets | `BARK_URL` 或 `BARK_URLS` |
 | 新游戏推送窗口 | Actions 输入或 Repository Variable | `NEW_GAME_WINDOW_HOURS`，默认 `28` |
 
 如果要修改运行时间，请编辑 `.github/workflows/main.yml`：
@@ -205,7 +217,7 @@ No server is required. Fork the repository, configure Telegram or Bark secrets, 
 1. Create a Telegram Bot with `@BotFather`, or copy your Bark push URL from the Bark iOS app.
 2. Get your numeric Telegram Chat ID from `@userinfobot` if you use Telegram.
 3. Fork this repository.
-4. Add `TG_BOT_TOKEN` and `TG_CHAT_ID`, or add `BARK_URL`, in **Settings** -> **Secrets and variables** -> **Actions**.
+4. Add `TG_BOT_TOKEN` and `TG_CHAT_ID`, or add `BARK_URL` / `BARK_URLS`, in **Settings** -> **Secrets and variables** -> **Actions**.
 5. Enable **Read and write permissions** in **Settings** -> **Actions** -> **General**.
 6. Open the **Actions** tab and run **Epic Free Game Notifier** manually once.
 

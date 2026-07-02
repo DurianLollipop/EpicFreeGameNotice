@@ -17,6 +17,22 @@ def get_new_game_window_hours():
         print(f"NEW_GAME_WINDOW_HOURS 配置无效: {NEW_GAME_WINDOW_HOURS}，使用默认 28 小时")
         return 28
 
+def get_first_page_slug(mappings):
+    for mapping in mappings or []:
+        page_slug = mapping.get("pageSlug")
+        if page_slug:
+            return page_slug
+    return None
+
+def build_game_link(game):
+    slug = (
+        game.get("productSlug")
+        or get_first_page_slug(game.get("offerMappings"))
+        or get_first_page_slug(game.get("catalogNs", {}).get("mappings"))
+        or game.get("urlSlug")
+    )
+    return f"https://store.epicgames.com/p/{slug}" if slug else "https://store.epicgames.com/free-games"
+
 def get_epic_free_games():
     url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US"
     try:
@@ -75,8 +91,7 @@ def get_epic_free_games():
             if is_free and should_notify:
                 title = game.get('title')
                 description = game.get('description', '暂无描述')
-                slug = game.get('productSlug') or game.get('urlSlug')
-                link = f"https://store.epicgames.com/p/{slug}" if slug else "https://store.epicgames.com/free-games"
+                link = build_game_link(game)
                 
                 image_url = ""
                 for img in game.get('keyImages', []):

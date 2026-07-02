@@ -1,6 +1,6 @@
 import requests
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import html
 
 # 1. 获取 GitHub Secrets
@@ -27,8 +27,6 @@ def get_epic_free_games():
 
             is_free = False
             end_date_str = "未知"
-            is_new_game = False # 标记是否为新上架的游戏
-
             for offer_group in offers:
                 for offer in offer_group['promotionalOffers']:
                     if offer['discountSetting']['discountPercentage'] == 0:
@@ -36,7 +34,6 @@ def get_epic_free_games():
                         
                         # Time formatting
                         raw_end_date = offer.get('endDate')
-                        raw_start_date = offer.get('startDate') # 获取开始时间
                         
                         # 处理截止时间
                         if raw_end_date:
@@ -46,34 +43,10 @@ def get_epic_free_games():
                             except:
                                 end_date_str = raw_end_date
                         
-                        # 【核心逻辑】判断游戏是否“刚上架”
-                        # 只有在促销开始的 28 小时内检测到，才算“新消息”并推送。
-                        # 28小时是为了容错（GitHub Action 可能会排队延迟几分钟）
-                        if raw_start_date:
-                            try:
-                                dt_start = datetime.strptime(raw_start_date.split('.')[0], "%Y-%m-%dT%H:%M:%S")
-                                # 获取当前 UTC 时间
-                                now = datetime.utcnow()
-                                # 计算时间差
-                                time_diff = now - dt_start
-                                
-                                # 如果时间差小于 28 小时，说明是刚出的新游戏 -> 推送
-                                # 如果时间差大于 28 小时，说明是昨天的旧消息 -> 不推送
-                                if time_diff < timedelta(hours=28):
-                                    is_new_game = True
-                                else:
-                                    print(f"跳过旧游戏: {game.get('title')} (已上架 {time_diff})")
-                            except Exception as e:
-                                print(f"时间解析错误: {e}")
-                                # 如果时间解析失败，为了保险起见，默认它是新的，防止漏发
-                                is_new_game = True
-                        else:
-                            is_new_game = True # 没有开始时间的数据，默认发送
-                        
                         break
             
-            # 只有当它是免费 且 是新上架的游戏时，才加入列表
-            if is_free and is_new_game:
+            # 测试模式：只要当前是免费游戏就推送，暂不限制上架时间。
+            if is_free:
                 title = game.get('title')
                 description = game.get('description', '暂无描述')
                 slug = game.get('productSlug') or game.get('urlSlug')

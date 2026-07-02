@@ -6,6 +6,8 @@ import html
 # 1. 获取 GitHub Secrets
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID = os.environ.get("TG_CHAT_ID")
+BARK_URL = os.environ.get("BARK_URL")
+BARK_GROUP = os.environ.get("BARK_GROUP", "Epic Free Games")
 
 def get_epic_free_games():
     url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US"
@@ -101,7 +103,7 @@ def get_epic_free_games():
 
 def send_telegram_message(message):
     if not BOT_TOKEN or not CHAT_ID:
-        print("❌ 错误：未设置 Token 或 Chat ID")
+        print("未配置 Telegram，跳过 Telegram 推送")
         return
     
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -112,9 +114,39 @@ def send_telegram_message(message):
         "disable_web_page_preview": False
     }
     try:
-        requests.post(url, json=payload)
+        res = requests.post(url, json=payload, timeout=15)
+        res.raise_for_status()
+        print("✅ Telegram 推送成功")
     except Exception as e:
         print(f"❌ 推送错误: {e}")
+
+def send_bark_message(game):
+    if not BARK_URL:
+        print("未配置 Bark，跳过 Bark 推送")
+        return
+
+    title = f"Epic 喜加一提醒：{game['title']}"
+    body = (
+        f"截止: {game['end_date']}\n\n"
+        f"{game['description']}\n\n"
+        f"点击通知领取游戏"
+    )
+    payload = {
+        "title": title,
+        "body": body,
+        "url": game["link"],
+        "group": BARK_GROUP,
+    }
+
+    if game.get("image"):
+        payload["icon"] = game["image"]
+
+    try:
+        res = requests.post(BARK_URL.rstrip("/"), json=payload, timeout=15)
+        res.raise_for_status()
+        print("✅ Bark 推送成功")
+    except Exception as e:
+        print(f"❌ Bark 推送错误: {e}")
 
 if __name__ == "__main__":
     print("⏳ 开始检查 Epic 免费游戏 (每日去重版)...")
@@ -135,5 +167,6 @@ if __name__ == "__main__":
                 f"🔗 <a href='{g['link']}'>点击领取游戏</a>"
             )
             send_telegram_message(msg)
+            send_bark_message(g)
     else:
         print("🤷‍♂️ 今天没有新上架的免费游戏 (可能是旧游戏已通知过)")

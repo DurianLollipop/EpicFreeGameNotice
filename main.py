@@ -116,8 +116,10 @@ def send_telegram_message(message):
         res = requests.post(url, json=payload, timeout=15)
         res.raise_for_status()
         print("✅ Telegram 推送成功")
+    except requests.HTTPError as e:
+        print(f"❌ Telegram 推送错误: {e}，响应: {res.text}")
     except Exception as e:
-        print(f"❌ 推送错误: {e}")
+        print(f"❌ Telegram 推送错误: {e}")
 
 def send_bark_message(game):
     if not BARK_URL:
@@ -156,14 +158,17 @@ if __name__ == "__main__":
         for g in games:
             safe_title = html.escape(g['title'])
             safe_desc = html.escape(g['description'])
+            safe_link = html.escape(g['link'], quote=True)
+            safe_image = html.escape(g['image'], quote=True) if g.get('image') else ""
+            image_preview = f"<a href='{safe_image}'>&#8205;</a>" if safe_image else ""
             
             msg = (
-                f"<a href='{g['image']}'>&#8205;</a>"
+                f"{image_preview}"
                 f"🔥 <b>Epic 喜加一提醒</b> 🔥\n\n"
                 f"🎮 <b>{safe_title}</b>\n"
                 f"⏰ 截止: {g['end_date']}\n\n"
                 f"📝 {safe_desc}\n\n"
-                f"🔗 <a href='{g['link']}'>点击领取游戏</a>"
+                f"🔗 <a href='{safe_link}'>点击领取游戏</a>"
             )
             send_telegram_message(msg)
             send_bark_message(g)

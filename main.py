@@ -1,6 +1,6 @@
 import requests
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import html
 
 # 1. 获取 GitHub Secrets
@@ -8,6 +8,14 @@ BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID = os.environ.get("TG_CHAT_ID")
 BARK_URL = os.environ.get("BARK_URL")
 BARK_GROUP = os.environ.get("BARK_GROUP", "Epic Free Games")
+NEW_GAME_WINDOW_HOURS = os.environ.get("NEW_GAME_WINDOW_HOURS", "28")
+
+def get_new_game_window_hours():
+    try:
+        return float(NEW_GAME_WINDOW_HOURS)
+    except ValueError:
+        print(f"NEW_GAME_WINDOW_HOURS 配置无效: {NEW_GAME_WINDOW_HOURS}，使用默认 28 小时")
+        return 28
 
 def get_epic_free_games():
     url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US"
@@ -16,6 +24,7 @@ def get_epic_free_games():
         games = res['data']['Catalog']['searchStore']['elements']
         
         free_games = []
+        window_hours = get_new_game_window_hours()
         for game in games:
             # 1. 基础过滤
             promotions = game.get('promotions')
@@ -26,6 +35,7 @@ def get_epic_free_games():
             if not offers: continue
 
             is_free = False
+            should_notify = False
             end_date_str = "未知"
             for offer_group in offers:
                 for offer in offer_group['promotionalOffers']:
@@ -34,6 +44,7 @@ def get_epic_free_games():
                         
                         # Time formatting
                         raw_end_date = offer.get('endDate')
+                        raw_start_date = offer.get('startDate')
                         
                         # 处理截止时间
                         if raw_end_date:
@@ -42,11 +53,26 @@ def get_epic_free_games():
                                 end_date_str = dt_end.strftime("%Y-%m-%d %H:%M") + " (UTC)"
                             except:
                                 end_date_str = raw_end_date
+
+                        if window_hours <= 0:
+                            should_notify = True
+                        elif raw_start_date:
+                            try:
+                                dt_start = datetime.strptime(raw_start_date.split('.')[0], "%Y-%m-%dT%H:%M:%S")
+                                time_diff = datetime.utcnow() - dt_start
+                                if time_diff < timedelta(hours=window_hours):
+                                    should_notify = True
+                                else:
+                                    print(f"跳过旧游戏: {game.get('title')} (已上架 {time_diff})")
+                            except Exception as e:
+                                print(f"时间解析错误: {e}")
+                                should_notify = True
+                        else:
+                            should_notify = True
                         
                         break
             
-            # 测试模式：只要当前是免费游戏就推送，暂不限制上架时间。
-            if is_free:
+            if is_free and should_notify:
                 title = game.get('title')
                 description = game.get('description', '暂无描述')
                 slug = game.get('productSlug') or game.get('urlSlug')
@@ -122,11 +148,11 @@ def send_bark_message(game):
         print(f"❌ Bark 推送错误: {e}")
 
 if __name__ == "__main__":
-    print("⏳ 开始检查 Epic 免费游戏 (每日去重版)...")
+    print(f"⏳ 开始检查 Epic 免费游戏 (推送窗口: {get_new_game_window_hours()} 小时，0 表示不限制)...")
     games = get_epic_free_games()
     
     if games:
-        print(f"🎉 发现 {len(games)} 个新上架的免费游戏")
+        print(f"🎉 发现 {len(games)} 个符合推送条件的免费游戏")
         for g in games:
             safe_title = html.escape(g['title'])
             safe_desc = html.escape(g['description'])
@@ -142,4 +168,4 @@ if __name__ == "__main__":
             send_telegram_message(msg)
             send_bark_message(g)
     else:
-        print("🤷‍♂️ 今天没有新上架的免费游戏 (可能是旧游戏已通知过)")
+        print("🤷‍♂️ 今天没有符合推送条件的免费游戏")

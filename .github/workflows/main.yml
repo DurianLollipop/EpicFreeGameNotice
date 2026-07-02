@@ -7,6 +7,11 @@ on:
   
   # 允许手动触发
   workflow_dispatch:
+    inputs:
+      new_game_window_hours:
+        description: "只推送多少小时内新上架的免费游戏；填 0 表示不限制，适合测试"
+        required: false
+        default: "0"
 
 jobs:
   run_script:
@@ -30,4 +35,5 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           BARK_URL: ${{ secrets.BARK_URL }}
           BARK_GROUP: ${{ secrets.BARK_GROUP }}
+          NEW_GAME_WINDOW_HOURS: ${{ github.event_name == 'workflow_dispatch' && inputs.new_game_window_hours || vars.NEW_GAME_WINDOW_HOURS || '28' }}
         run: python main.py

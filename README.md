@@ -144,6 +144,7 @@ BARK_URL=https://你的Bark服务地址/你的Key
 | 依赖文件 | `requirements.txt` | `requests` |
 | Telegram 配置 | GitHub Secrets | `TG_BOT_TOKEN`、`TG_CHAT_ID` |
 | Bark 配置 | GitHub Secrets | `BARK_URL` |
+| 新游戏推送窗口 | Actions 输入或 Repository Variable | `NEW_GAME_WINDOW_HOURS`，默认 `28` |
 
 如果要修改运行时间，请编辑 `.github/workflows/main.yml`：
 
@@ -154,11 +155,22 @@ schedule:
 
 注意：GitHub Actions 的 cron 使用 UTC 时间。
 
+如果要调整“只推送新上架游戏”的时间窗口，可以在 GitHub Actions 手动运行时填写 `new_game_window_hours`：
+
+```text
+0  = 不限制上架时间，推送当前所有免费游戏，适合测试
+28 = 只推送 28 小时内新上架的免费游戏
+```
+
+定时任务会读取仓库变量 `NEW_GAME_WINDOW_HOURS`。如果没有配置该变量，则默认使用 `28`。
+
 ## 常见问题
 
 ### 手动运行了，为什么没收到消息？
 
 脚本有去重逻辑。只有当 Epic 免费游戏的促销开始时间距离当前时间小于约 28 小时，才会发送通知。如果当前免费游戏已经上架多天，脚本会跳过它，避免重复推送。
+
+测试时可以在 Actions 手动运行页面把 `new_game_window_hours` 填成 `0`，这样会推送当前所有免费游戏。
 
 ### Bark 的图文通知是什么效果？
 
@@ -197,7 +209,7 @@ No server is required. Fork the repository, configure Telegram or Bark secrets, 
 5. Enable **Read and write permissions** in **Settings** -> **Actions** -> **General**.
 6. Open the **Actions** tab and run **Epic Free Game Notifier** manually once.
 
-You may not receive a message during a manual test if the current free game has already been available for more than about 28 hours. That means the deduplication logic is working.
+Manual runs default to `new_game_window_hours = 0`, which pushes all current free games for testing. Scheduled runs default to `28` hours unless `NEW_GAME_WINDOW_HOURS` is configured as a repository variable.
 
 ## Star History
 
